@@ -410,7 +410,7 @@ download_module "system.sh" "https://raw.githubusercontent.com/dahuangying/dhy-b
 download_module "docker.sh" "https://raw.githubusercontent.com/dahuangying/dhy-box/main/linuxbox/docker.sh"
 download_module "network.sh" "https://raw.githubusercontent.com/dahuangying/dhy-box/main/linuxbox/network.sh"
 download_module "base.sh" "https://raw.githubusercontent.com/dahuangying/dhy-box/main/linuxbox/base.sh"
-download_module "main.sh" "https://raw.githubusercontent.com/dahuangying/dhy-box/main/linuxbox/main.sh"
+download_module "main.sh" "https://raw.githubusercontent.com/dahuangying/dhy-box/main/main.sh"
 
 # 为下载的模块赋予执行权限
 chmod +x "$MODULES_DIR"/*
