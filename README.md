@@ -5,7 +5,7 @@
 ## 使用方式
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/dahuangying/dahuangying-toolbox/main/main.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/dahuangying/dhy-box/main/main.sh)
 ```
 
 ## 模块说明
