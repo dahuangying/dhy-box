@@ -358,7 +358,7 @@ system_cleanup() {
 
 #8.快捷方式软链接管理 
 menu_ln_manager() {
-    local SRC_FILE="./linuxbox/main.sh"
+local SRC_FILE="/root/linuxbox/main.sh"
     local LINK_DIR="/usr/local/bin"
 
     if [ "$(id -u)" -ne 0 ]; then
@@ -449,12 +449,13 @@ full_uninstall() {
     
     # ===================== 【清理自定义快捷键】 =====================
     echo -e "${GREEN}正在清理自定义快捷键...${NC}"
-    TARGET="$(realpath ./linuxbox/main.sh)"
+    TARGET="/root/linuxbox/main.sh"
     for link in /usr/local/bin/*; do
         if [[ -L "$link" && "$(readlink "$link")" == "$TARGET" ]]; then
             rm -f "$link"
         fi
     done
+
 
     # 完成提示
     echo -e "${GREEN}✅ 大黄鹰运维工具箱已完全卸载完成！${NC}"
