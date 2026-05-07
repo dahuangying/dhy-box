@@ -358,7 +358,7 @@ system_cleanup() {
 
 #8.快捷方式软链接管理 
 menu_ln_manager() {
-    local SRC_FILE="/root/linuxbox.main.sh"
+    local SRC_FILE="/linuxbox.main.sh"
     local LINK_DIR="/usr/local/bin"
 
     if [ "$(id -u)" -ne 0 ]; then
@@ -373,7 +373,7 @@ menu_ln_manager() {
         echo "1. 创建快捷键（默认名称：dy）"
         echo "2. 查看快捷键"
         echo "3. 删除快捷键"
-        echo "0. 返回主菜单"
+        echo "0. 退出"
         echo -e "${GREEN}======================${NC}"
         read -p "请选择操作编号：" opt
 
@@ -385,7 +385,7 @@ menu_ln_manager() {
 
                 if [ ! -f "${SRC_FILE}" ]; then
                     echo -e "${RED}源文件不存在：${SRC_FILE}${NC}"
-                    read -p "按回车返回..."
+                    read -p "按回车键返回..."
                     continue
                 fi
 
@@ -406,29 +406,29 @@ menu_ln_manager() {
                     ln -s "${SRC_FILE}" "${link_full}"
                 fi
                 echo -e "${GREEN}操作完成！全局命令：${link_name}${NC}"
-                read -p "按回车返回..."
+                read -p "按回车键返回..."
                 ;;
 
             2)
-                echo -e "\n${GREEN}===== ${LINK_DIR} 软链接列表 =====${NC}"
+                echo -e "\n${GREEN}===== ${LINK_DIR} 快捷键列表 =====${NC}"
                 ls -l "${LINK_DIR}" | grep "\->"
-                read -p "按回车返回..."
+                read -p "按回车键返回..."
                 ;;
 
             3)
-                read -p "请输入要删除的软链接名称：" link_name
+                read -p "请输入要删除的快捷键名称：" link_name
                 local link_full="${LINK_DIR}/${link_name}"
                 if [ ! -L "${link_full}" ]; then
-                    echo "软链接不存在"
+                    echo "快捷键不存在"
                 else
                     read -p "确定删除 ${link_name} ?(y/n) " yn
                     [[ "$yn" == [yY] ]] && rm -f "${link_full}" && echo "删除成功"
                 fi
-                read -p "按回车返回..."
+                read -p "按回车键返回..."
                 ;;
 
             0) break ;;
-            *) echo -e "${RED}输入无效${NC}"; read -p "按回车继续..." ;;
+            *) echo -e "${RED}输入无效${NC}"; read -p "按回车键继续..." ;;
         esac
     done
 }
