@@ -7,11 +7,14 @@ CYAN="\033[0;36m"   # 青色
 RED="\033[0;31m"    # 红色
 NC="\033[0m"        # 重置颜色
 
-# ========== 优化10：退出陷阱清理 ==========
+# 退出自动清理 
 cleanup() {
     echo -e "\n${YELLOW}脚本执行结束，清理临时文件...${NC}"
-    # 清理临时容器（匹配 _tmp_ 后缀）
-    docker rm -f $(docker ps -a --filter "name=_tmp_" -q) 2>/dev/null || true
+    
+    # 只有安装了 Docker 才执行清理，避免报错
+    if command -v docker &>/dev/null; then
+        docker rm -f $(docker ps -a --filter "name=_tmp_" -q) 2>/dev/null || true
+    fi
 }
 trap cleanup EXIT
 
