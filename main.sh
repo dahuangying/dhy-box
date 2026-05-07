@@ -28,7 +28,8 @@ show_menu() {
     echo "5. 系统工具"	
     echo "6. 应用市场"
     echo "7. Docker 管理"
-    echo "8. 卸载程序"
+    echo "8. 快捷方式"	
+    echo "9. 卸载程序"
     echo "0. 退出"
     read -p "请输入选项编号: " choice
     case $choice in
@@ -54,6 +55,9 @@ show_menu() {
             bash linuxbox/docker.sh
             ;;
         8)
+            menu_ln_manager
+            ;;			
+        9)
             full_uninstall
             ;;
         0)
@@ -352,8 +356,84 @@ system_cleanup() {
     pause
 }
 
+#8.快捷方式软链接管理 
+menu_ln_manager() {
+    local SRC_FILE="/root/linuxbox.main.sh"
+    local LINK_DIR="/usr/local/bin"
 
-# 8.完整卸载工具箱（菜单8 使用）
+    if [ "$(id -u)" -ne 0 ]; then
+        echo -e "${RED}错误：必须使用 root 权限运行${NC}"
+        read -p "按回车返回..."
+        return
+    fi
+
+    while true; do
+        clear
+        echo -e "${GREEN}=== 快捷方式管理 =====${NC}"
+        echo "1. 创建快捷键（默认名称：dy）"
+        echo "2. 查看快捷键"
+        echo "3. 删除快捷键"
+        echo "0. 返回主菜单"
+        echo -e "${GREEN}======================${NC}"
+        read -p "请选择操作编号：" opt
+
+        case $opt in
+            1)
+                read -p "请输入快捷键名称【默认: dy 直接回车使用】：" link_name
+                [ -z "$link_name" ] && link_name="dy"
+                local link_full="${LINK_DIR}/${link_name}"
+
+                if [ ! -f "${SRC_FILE}" ]; then
+                    echo -e "${RED}源文件不存在：${SRC_FILE}${NC}"
+                    read -p "按回车返回..."
+                    continue
+                fi
+
+                chmod +x "${SRC_FILE}"
+
+                if [ -L "${link_full}" ]; then
+                    echo -e "${YELLOW}名称已被占用！${NC}"
+                    echo "当前指向：$(readlink "${link_full}")"
+                    echo "1.覆盖 2.删除重建 3.取消"
+                    read -p "请选择：" c_opt
+                    case $c_opt in
+                        1) ln -sf "${SRC_FILE}" "${link_full}" ;;
+                        2) rm -f "${link_full}" && ln -s "${SRC_FILE}" "${link_full}" ;;
+                        3) echo "已取消" ;;
+                        *) echo "输入错误" ;;
+                    esac
+                else
+                    ln -s "${SRC_FILE}" "${link_full}"
+                fi
+                echo -e "${GREEN}操作完成！全局命令：${link_name}${NC}"
+                read -p "按回车返回..."
+                ;;
+
+            2)
+                echo -e "\n${GREEN}===== ${LINK_DIR} 软链接列表 =====${NC}"
+                ls -l "${LINK_DIR}" | grep "\->"
+                read -p "按回车返回..."
+                ;;
+
+            3)
+                read -p "请输入要删除的软链接名称：" link_name
+                local link_full="${LINK_DIR}/${link_name}"
+                if [ ! -L "${link_full}" ]; then
+                    echo "软链接不存在"
+                else
+                    read -p "确定删除 ${link_name} ?(y/n) " yn
+                    [[ "$yn" == [yY] ]] && rm -f "${link_full}" && echo "删除成功"
+                fi
+                read -p "按回车返回..."
+                ;;
+
+            0) break ;;
+            *) echo -e "${RED}输入无效${NC}"; read -p "按回车继续..." ;;
+        esac
+    done
+}
+
+# 9.完整卸载工具箱
 full_uninstall() {
     # 第一步：确认
     echo -e "${GREEN}确定要卸载大黄鹰运维工具箱吗？（y/n）${NC}"
