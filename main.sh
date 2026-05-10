@@ -29,7 +29,8 @@ show_menu() {
     echo "6. 应用市场"
     echo "7. Docker 管理"
     echo "8. 快捷方式"	
-    echo "9. 卸载程序"
+    echo "9. 更新程序"		
+    echo "10. 卸载程序"
     echo "0. 退出"
     read -p "请输入选项编号: " choice
     case $choice in
@@ -56,8 +57,11 @@ show_menu() {
             ;;
         8)
             menu_ln_manager
-            ;;			
+            ;;
         9)
+            update_toolbox
+            ;;			
+        10)
             full_uninstall
             ;;
         0)
@@ -433,7 +437,14 @@ local SRC_FILE="/root/linuxbox/main.sh"
     done
 }
 
-# 9.完整卸载工具箱
+# 9.更新工具箱
+update_toolbox() {
+    echo -e "\n${CYAN}程序更新后，进入主菜单...${NC}"
+    rm -rf ./linuxbox >/dev/null 2>&1
+    source "$0"
+}
+
+# 10.完整卸载工具箱
 full_uninstall() {
     # 第一步：确认
     echo -e "${GREEN}确定要卸载大黄鹰运维工具箱吗？（y/n）${NC}"
