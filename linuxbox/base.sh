@@ -247,21 +247,33 @@ sysctl -p
 swap_remove() {
     clear
     echo "=== 彻底卸载虚拟内存 所有配置还原 ==="
-    read -p "确定删除所有swap文件及配置？(y/n)：" confirm
+    read -p "确定删除所有swap分区/文件及配置？(y/n)：" confirm
     if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
         echo "已取消"
-        wait_key
         return
     fi
 
-    swapoff /swapfile 2>/dev/null
-    rm -f /swapfile
-    sed -i '/\/swapfile/d' /etc/fstab
-    sed -i '/vm.swappiness=10/d' /etc/sysctl.conf
-    sysctl -p
+    # 1. 关闭所有swap（兼容分区 + 文件）
+    swapoff -a
 
-    echo "全部清理完成，恢复系统默认"
-    wait_key
+    # 2. 删除swap文件（如果存在）
+    rm -f /swapfile
+
+    # 3. 清空 fstab 里所有 swap 配置（CentOS 分区也能删掉）
+    sed -i '/swap/s/^/#/' /etc/fstab
+    sed -i '/\/swapfile/d' /etc/fstab
+
+    # 4. 清理 swappiness 配置
+    sed -i '/vm.swappiness/d' /etc/sysctl.conf
+    if [ -f /etc/sysctl.d/*.conf ]; then
+        sed -i '/vm.swappiness/d' /etc/sysctl.d/*.conf 2>/dev/null
+    fi
+
+    # 5. 生效配置
+    sysctl -p &>/dev/null
+
+    echo -e "\n✅ 虚拟内存已彻底卸载！系统已恢复默认"
+    wait_key	
 }
 
 # 7. Linux 通用普通用户管理
