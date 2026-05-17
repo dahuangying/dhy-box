@@ -240,10 +240,8 @@ open_specific_port() {
         return
     fi
 
-    if ! safe_input "协议类型(tcp/udp，默认tcp)" "proto"; then
-        proto="tcp"
-    fi
-    proto=${proto:-tcp}
+    # 直接默认 TCP，不再询问，不会取消
+    proto="tcp"
 
     IFS=',' read -ra arr <<< "$ports"
     for p in "${arr[@]}"; do
@@ -263,7 +261,7 @@ open_specific_port() {
                 iptables -A INPUT -p $proto --dport $p -j ACCEPT
                 ;;
         esac
-        echo -e "${GREEN}已开放：$p/$proto${NC}"
+        echo -e "${GREEN}已开放：$p${NC}"
     done
 
     wait_key
@@ -284,10 +282,8 @@ close_specific_port() {
         return
     fi
 
-    if ! safe_input "协议类型(tcp/udp，默认tcp)" "proto"; then
-        proto="tcp"
-    fi
-    proto=${proto:-tcp}
+    # 直接默认 TCP，不再询问
+    proto="tcp"
 
     IFS=',' read -ra arr <<< "$ports"
     for p in "${arr[@]}"; do
@@ -314,7 +310,7 @@ close_specific_port() {
                 iptables -D INPUT -p $proto --dport $p -j ACCEPT 2>/dev/null
                 ;;
         esac
-        echo -e "${GREEN}已关闭：$p/$proto${NC}"
+        echo -e "${GREEN}已关闭：$p${NC}"
     done
 
     wait_key
