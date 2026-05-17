@@ -68,29 +68,23 @@ show_menu() {
     echo -e "${GREEN}====================================================${NC}"
     echo -e "${GREEN}大黄鹰-Linux服务器运维工具箱菜单 - 系统基础${NC}"
     echo -e "欢迎使用本脚本，请根据菜单选择操作："
-    echo -e "${GREEN}====================================================${NC}"
-    echo -e "1.  文件权限设置"
-    echo -e "2.  重置文件权限为默认"
-    echo -e "${BLUE}---------------------------------------${NC}"		
-	echo -e "3 . 重启服务器"
+    echo -e "${GREEN}====================================================${NC}"	
+	echo -e "1 . 重启服务器"
     echo -e "${BLUE}---------------------------------------${NC}"
-    echo -e "4. 查看端口占用状态"
-    echo -e "5. 开放所有端口（关键端口不开放）"
-    echo -e "6. 关闭所有端口（保留 22.80.443）"
-    echo -e "7. 开放指定端口"
-    echo -e "8. 关闭指定端口"
+    echo -e "2. 查看端口占用状态"
+    echo -e "3. 查看防火墙状态"
+    echo -e "4. 关闭防火墙"
+    echo -e "5. 开启防火墙"
+    echo -e "6. 开放指定端口"
+    echo -e "7. 关闭指定端口"	
     echo -e "${BLUE}---------------------------------------${NC}"	
-	echo -e "9.  查看防火墙状态"
-    echo -e "10. 关闭防火墙"
-    echo -e "11. 开启防火墙"
-    echo -e "12. 禁止防火墙开机自启"
-    echo -e "13. 恢复防火墙开机自启"
+    echo -e "8.  文件权限设置"	
     echo -e "${BLUE}---------------------------------------${NC}"
-    echo -e "14. 创建目录"
-    echo -e "15. 创建文件"
-    echo -e "16. 删除目录/文件"
-    echo -e "17. 编辑文件"
-    echo -e "18. 查找文件/目录"
+    echo -e "9. 创建目录"
+    echo -e "10. 创建文件"
+    echo -e "11. 删除目录/文件"
+    echo -e "12. 编辑文件"
+    echo -e "13. 查找文件/目录"
     echo -e "${BLUE}---------------------------------------${NC}"
     echo -e "0. 退出"
     echo -n "请输入选项数字: "
@@ -103,31 +97,262 @@ main() {
         show_menu
         read option
         case $option in
-             1) file_permission_settings ;;
-             2) reset_file_permissions ;;
-			 3) reboot_server ;; 				
-             4) show_port_status ;;
-             5) open_all_ports ;;
-             6) close_all_ports ;;
-             7) open_specific_port ;;
-             8) close_specific_port ;;
-			 9) show_firewall_status ;;
-            10) stop_firewall ;;
-            11) start_firewall ;;
-            12) disable_firewall_autostart ;;
-            13) enable_firewall_autostart ;;
-            14) create_directory ;;
-            15) create_file ;;
-            16) delete_target ;;
-            17) edit_file ;;
-            18) search_files ;;
+             1) reboot_server ;;
+             2) show_port_status ;;
+			 3) show_firewall_status ;; 				
+             4) stop_firewall ;;
+             5) start_firewall ;;
+             6) open_specific_port ;;
+             7) close_specific_port ;;
+             8) file_permission_settings ;;
+             9) create_directory ;;
+            10) create_file ;;
+            11) delete_target ;;
+            12) edit_file ;;
+            13) search_files ;;
             0) echo -e "${GREEN}脚本已退出${NC}"; exit 0 ;;
             *) echo -e "${RED}无效选项！${NC}"; sleep 1 ;;
         esac
     done
 }
 
-# 1. 文件权限设置
+
+
+# 1. 重启服务器函数
+reboot_server() {
+    echo -e "\n${RED}=== 重启服务器 ===${NC}"
+    echo -e "${YELLOW}警告：这将导致服务器立即重启！${NC}"
+    
+    # 确认操作
+    read -p "确定要重启服务器吗？(y/n): " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo -e "${YELLOW}已取消重启操作${NC}"
+        wait_key
+        return
+    fi
+
+    # 倒计时提示
+    for i in {5..1}; do
+        echo -ne "${RED}服务器将在 ${i} 秒后重启...${NC}\033[0K\r"
+        sleep 1
+    done
+
+    # 执行重启
+    echo -e "\n${GREEN}正在重启服务器...${NC}"
+    shutdown -r now
+}
+
+# 2. 查看端口占用状态
+show_port_status() {
+    echo -e "\n${YELLOW}=== 端口占用状态 ===${NC}"
+    ss -tulnp
+    wait_key
+}
+
+# 3. 查看防火墙状态
+show_firewall_status() {
+    echo -e "\n${YELLOW}=== 防火墙状态 ===${NC}"
+    case $(detect_firewall) in
+        ufw)
+            ufw status verbose
+            ;;
+        firewalld)
+            firewall-cmd --state 2>/dev/null && echo "firewalld 运行中"
+            firewall-cmd --list-all 2>/dev/null
+            ;;
+        iptables)
+            iptables -L -n
+            ;;
+        *)
+            echo -e "${RED}未检测到防火墙${NC}"
+            ;;
+    esac
+    wait_key
+}
+
+# 4. 关闭防火墙（同步关闭自启，保留全部规则）
+stop_firewall() {
+    echo -e "\n${RED}=== 关闭防火墙（保留所有规则） ===${NC}"
+    case $(detect_firewall) in
+        ufw)
+            ufw disable
+            ;;
+        firewalld)
+            systemctl stop firewalld
+            systemctl disable firewalld
+            ;;
+        iptables)
+            iptables -P INPUT ACCEPT
+            iptables -P FORWARD ACCEPT
+            iptables -P OUTPUT ACCEPT
+            echo -e "${YELLOW}iptables 已临时放行所有，规则保留${NC}"
+            ;;
+        *)
+            echo -e "${YELLOW}未检测到防火墙${NC}"
+            wait_key
+            return
+            ;;
+    esac
+    echo -e "${GREEN}防火墙已关闭 + 开机自启已关闭 + 规则全部保留${NC}"
+    wait_key
+}
+
+# 5. 开启防火墙（同步开启自启，兜底放行22，不动原有规则）
+start_firewall() {
+    echo -e "\n${GREEN}=== 开启防火墙（兜底放行22） ===${NC}"
+    local ft=$(detect_firewall)
+    case $ft in
+        ufw)
+            ufw enable
+            ufw allow 22/tcp
+            ;;
+        firewalld)
+            systemctl enable --now firewalld
+            firewall-cmd --permanent --add-service=ssh
+            firewall-cmd --reload
+            ;;
+        iptables)
+            iptables -A INPUT -p tcp --dport 22 -j ACCEPT 2>/dev/null
+            echo -e "${YELLOW}iptables 启动并确保22端口开放${NC}"
+            ;;
+        *)
+            echo -e "${RED}未检测到防火墙${NC}"
+            wait_key
+            return
+            ;;
+    esac
+    echo -e "${GREEN}防火墙已开启 + 自启已开启 + 22端口已确保放行${NC}"
+    wait_key
+}
+
+# 6. 开放指定端口（需开启防火墙，支持多端口）
+open_specific_port() {
+    echo -e "\n${YELLOW}=== 开放指定端口（支持 80,443 格式） ===${NC}"
+
+    if ! is_firewall_active; then
+        echo -e "${RED}错误：请先开启防火墙！${NC}"
+        wait_key
+        return
+    fi
+
+    if ! safe_input "输入端口号(逗号分隔)" "ports"; then
+        wait_key
+        return
+    fi
+
+    if ! safe_input "协议类型(tcp/udp，默认tcp)" "proto"; then
+        proto="tcp"
+    fi
+    proto=${proto:-tcp}
+
+    IFS=',' read -ra arr <<< "$ports"
+    for p in "${arr[@]}"; do
+        p=$(trim "$p")
+        if [[ ! $p =~ ^[0-9]+$ ]] || [[ $p -lt 1 || $p -gt 65535 ]]; then
+            echo -e "${RED}跳过无效端口：$p${NC}"
+            continue
+        fi
+
+        case $(detect_firewall) in
+            ufw) ufw allow $p/$proto ;;
+            firewalld)
+                firewall-cmd --permanent --add-port=$p/$proto
+                firewall-cmd --reload
+                ;;
+            iptables)
+                iptables -A INPUT -p $proto --dport $p -j ACCEPT
+                ;;
+        esac
+        echo -e "${GREEN}已开放：$p/$proto${NC}"
+    done
+
+    wait_key
+}
+
+# 7. 关闭指定端口（需开启防火墙，禁止关22+支持多端口）
+close_specific_port() {
+    echo -e "\n${YELLOW}=== 关闭指定端口（支持 80,443 格式） ===${NC}"
+
+    if ! is_firewall_active; then
+        echo -e "${RED}错误：请先开启防火墙！${NC}"
+        wait_key
+        return
+    fi
+
+    if ! safe_input "输入端口号(逗号分隔)" "ports"; then
+        wait_key
+        return
+    fi
+
+    if ! safe_input "协议类型(tcp/udp，默认tcp)" "proto"; then
+        proto="tcp"
+    fi
+    proto=${proto:-tcp}
+
+    IFS=',' read -ra arr <<< "$ports"
+    for p in "${arr[@]}"; do
+        p=$(trim "$p")
+        if [[ ! $p =~ ^[0-9]+$ ]]; then
+            echo -e "${RED}跳过无效端口：$p${NC}"
+            continue
+        fi
+
+        if [ "$p" = "22" ]; then
+            echo -e "${RED}22 端口禁止关闭！${NC}"
+            continue
+        fi
+
+        case $(detect_firewall) in
+            ufw)
+                ufw delete allow $p/$proto 2>/dev/null
+                ;;
+            firewalld)
+                firewall-cmd --permanent --remove-port=$p/$proto
+                firewall-cmd --reload
+                ;;
+            iptables)
+                iptables -D INPUT -p $proto --dport $p -j ACCEPT 2>/dev/null
+                ;;
+        esac
+        echo -e "${GREEN}已关闭：$p/$proto${NC}"
+    done
+
+    wait_key
+}
+
+# ------------------------------
+# 工具函数（直接放脚本末尾即可）
+# ------------------------------
+detect_firewall() {
+    if command -v ufw &>/dev/null; then
+        echo "ufw"
+    elif command -v firewall-cmd &>/dev/null; then
+        echo "firewalld"
+    elif command -v iptables &>/dev/null; then
+        echo "iptables"
+    else
+        echo "none"
+    fi
+}
+
+is_firewall_active() {
+    local t=$(detect_firewall)
+    case $t in
+        ufw) [[ $(ufw status | head -n1) == *"active"* ]] ;;
+        firewalld) firewall-cmd --state &>/dev/null ;;
+        iptables) iptables -S | grep -q INPUT ;;
+        *) return 1 ;;
+    esac
+}
+
+trim() {
+    local var="$1"
+    var="${var#"${var%%[![:space:]]*}"}"
+    var="${var%"${var##*[![:space:]]}"}"
+    echo -n "$var"
+}
+
+# 8. 文件权限设置
 file_permission_settings() {
     while true; do
         clear
@@ -187,467 +412,7 @@ file_permission_settings() {
     done
 }
 
-# 2. 重置文件权限
-reset_file_permissions() {
-    echo -e "\n${YELLOW}=== 重置文件权限 ===${NC}"
-    if ! safe_input "输入要重置的路径" "path"; then
-        echo -e "${YELLOW}已取消操作${NC}"
-        wait_key
-        return
-    fi
-    
-    [ ! -e "$path" ] && echo -e "${RED}路径不存在！${NC}" && wait_key && return
-    
-    echo -e "${RED}警告：这将递归重置所有权限！${NC}"
-    if ! safe_input "确认重置？(y/n)" "confirm"; then
-        echo -e "${YELLOW}已取消操作${NC}"
-        wait_key
-        return
-    fi
-
-    if [ "$confirm" = "y" ]; then
-        if [ -d "$path" ]; then
-            find "$path" -type d -exec chmod 755 {} \; 2>/dev/null
-            find "$path" -type f -exec chmod 644 {} \; 2>/dev/null
-        else
-            chmod 644 "$path"
-        fi
-        echo -e "${GREEN}权限已重置为默认！${NC}"
-    fi
-    wait_key
-}
-
-# 3. 重启服务器函数
-reboot_server() {
-    echo -e "\n${RED}=== 重启服务器 ===${NC}"
-    echo -e "${YELLOW}警告：这将导致服务器立即重启！${NC}"
-    
-    # 确认操作
-    read -p "确定要重启服务器吗？(y/n): " confirm
-    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-        echo -e "${YELLOW}已取消重启操作${NC}"
-        wait_key
-        return
-    fi
-
-    # 倒计时提示
-    for i in {5..1}; do
-        echo -ne "${RED}服务器将在 ${i} 秒后重启...${NC}\033[0K\r"
-        sleep 1
-    done
-
-    # 执行重启
-    echo -e "\n${GREEN}正在重启服务器...${NC}"
-    shutdown -r now
-}
-
-# 4. 查看端口状态
-show_port_status() {
-    echo -e "\n${YELLOW}=== 端口占用状态 ===${NC}"
-    echo -e "${BLUE}活动连接：${NC}"
-    ss -tulnp
-    echo -e "\n${BLUE}防火墙规则：${NC}"
-    if command -v ufw >/dev/null; then
-        ufw status
-    elif command -v firewall-cmd >/dev/null; then
-        firewall-cmd --list-all
-    else
-        iptables -L -n
-    fi
-    wait_key
-}
-
-# 5. 开放所有端口（关键端口不开放）
-open_all_ports() {
-    clear
-    echo -e "\n${RED}=== 警告：将开放非系统关键端口 ===${NC}"
-    echo -e "${YELLOW}以下端口仍受保护："
-    echo -e "• 53/udp    (DNS)"
-    echo -e "• 161/udp   (SNMP)"
-    echo -e "• 389/tcp   (LDAP)"
-    echo -e "• 3306/tcp  (MySQL)"
-    echo -e "• 5432/tcp  (PostgreSQL)"
-    echo -e "• 6379/tcp  (Redis)"
-    echo -e "• 内部网络通信端口${NC}"
-    
-    read -p "确定继续吗？(y/n): " confirm
-    [[ "$confirm" != "y" ]] && return
-
-    # 自动检测内部网络
-    auto_detect_internal_network() {
-        echo -e "${YELLOW}正在自动检测内部网络...${NC}"
-        detected_nets=$(ip -o -4 addr show | awk '
-            /^[0-9]+: (eth|en|wl|em)[0-9]/ && !/(docker|virbr|veth|br-)/ {
-                split($4, ip, "/")
-                if (ip[2] >= 24) print $4
-            }' | sort -u | xargs | tr ' ' ',')
-        
-        [ -z "$detected_nets" ] && detected_nets="10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
-        
-        read -p "使用检测网络：${detected_nets} [Y/n]? " confirm
-        [[ "$confirm" =~ ^[Nn] ]] && read -p "输入自定义网络(CIDR逗号分隔): " detected_nets
-        
-        INTERNAL_NETWORK="${detected_nets// /,}"
-    }
-
-    if [ -z "$INTERNAL_NETWORK" ]; then
-        auto_detect_internal_network
-    else
-        echo -e "${GREEN}使用预定义内部网络：$INTERNAL_NETWORK${NC}"
-    fi
-
-    # 防火墙规则配置
-    if command -v ufw >/dev/null; then
-        echo -e "${GREEN}使用 UFW 配置...${NC}"
-        ufw --force reset
-        ufw default allow incoming
-
-        # 允许内部网络
-        for net in $(tr ',' ' ' <<< "$INTERNAL_NETWORK"); do
-            ufw allow from "$net"
-        done
-
-        # 逐个拒绝关键端口（外部）
-        for port in 53 161 389 3306 5432 6379; do
-            ufw deny proto tcp to any port "$port"
-            [ $port -le 161 ] && ufw deny proto udp to any port "$port"
-        done
-
-        ufw --force enable
-        ufw reload
-
-    elif command -v firewall-cmd >/dev/null; then
-        echo -e "${GREEN}使用 Firewalld 配置...${NC}"
-        # 创建可信区域
-        firewall-cmd --permanent --new-zone=trusted_internal >/dev/null 2>&1
-        firewall-cmd --permanent --zone=trusted_internal --set-target=ACCEPT
-        firewall-cmd --permanent --zone=trusted_internal --add-source="$INTERNAL_NETWORK"
-
-        # 公共区域限制
-        firewall-cmd --permanent --zone=public --set-target=ACCEPT
-        for port in 53 161 389 3306 5432 6379; do
-            firewall-cmd --permanent --zone=public --add-rich-rule="rule family='ipv4' port port='$port' protocol='tcp' reject"
-            [ $port -le 161 ] && firewall-cmd --permanent --zone=public --add-rich-rule="rule family='ipv4' port port='$port' protocol='udp' reject"
-        done
-        firewall-cmd --reload
-
-    else
-        echo -e "${GREEN}使用 iptables 配置...${NC}"
-        iptables -P INPUT ACCEPT
-        iptables -P FORWARD ACCEPT
-        iptables -P OUTPUT ACCEPT
-        iptables -F
-
-        # 允许内部网络
-        for net in $(tr ',' ' ' <<< "$INTERNAL_NETWORK"); do
-            iptables -A INPUT -s "$net" -j ACCEPT
-        done
-
-        # 拒绝外部访问关键端口
-        iptables -A INPUT -p tcp -m multiport --dports 53,161,389,3306,5432,6379 -j DROP
-        iptables -A INPUT -p udp -m multiport --dports 53,161 -j DROP
-
-        # 持久化规则
-        mkdir -p /etc/iptables
-        iptables-save > /etc/iptables/rules.v4
-        ip6tables-save > /etc/iptables/rules.v6
-    fi
-
-    # 显示配置结果
-    echo -e "\n${GREEN}配置完成！当前开放状态：${NC}"
-    if command -v ufw >/dev/null; then
-        ufw status numbered | grep -E '\[允许|拒绝\]'
-    elif command -v firewall-cmd >/dev/null; then
-        echo "[公共区域]"
-        firewall-cmd --zone=public --list-all
-        echo -e "\n[内部区域]"
-        firewall-cmd --zone=trusted_internal --list-all
-    else
-        iptables -L INPUT -n -v --line-numbers | grep -E 'DROP|ACCEPT'
-    fi
-    wait_key
-}
-
-# 6. 关闭所有端口
-close_all_ports() {
-    echo -e "\n${RED}=== 警告：将关闭非必要端口（保留关键端口） ===${NC}"
-    echo -e "${YELLOW}以下端口将被保留："
-    echo -e "• 22/tcp    (SSH)"
-    echo -e "• 80,443/tcp (HTTP/HTTPS)"
-    echo -e "• 53/udp    (DNS)"
-    echo -e "• 123/udp   (NTP时间同步)"
-    echo -e "• 873/tcp   (Rsync)"
-    echo -e "• 3000-4000/tcp (常见内部服务)${NC}"
-    
-    read -p "确定继续吗？(y/n): " confirm
-    [ "$confirm" != "y" ] && return
-    
-    if command -v ufw >/dev/null; then
-        # UFW方案：保留关键端口
-        ufw --force reset
-        ufw allow 22/tcp
-        ufw allow 80,443/tcp
-        ufw allow 53/udp
-        ufw allow 123/udp
-        ufw allow 873/tcp
-        ufw allow 3000:4000/tcp
-        ufw default deny incoming
-        ufw enable
-    elif command -v firewall-cmd >/dev/null; then
-        # Firewalld方案
-        firewall-cmd --zone=public --remove-port=1-65535/tcp --permanent
-        firewall-cmd --zone=public --remove-port=1-65535/udp --permanent
-        firewall-cmd --zone=public --add-port={22,80,443,873}/tcp --permanent
-        firewall-cmd --zone=public --add-port={53,123}/udp --permanent
-        firewall-cmd --zone=public --add-port=3000-4000/tcp --permanent
-        firewall-cmd --zone=public --set-target=DROP --permanent
-        firewall-cmd --reload
-    else
-        # iptables方案
-        iptables -F
-        # 保留关键端口
-        iptables -A INPUT -p tcp -m multiport --dports 22,80,443,873,3000:4000 -j ACCEPT
-        iptables -A INPUT -p udp --dport 53 -j ACCEPT
-        iptables -A INPUT -p udp --dport 123 -j ACCEPT
-        # 放行本地回环和内部通信
-        iptables -A INPUT -i lo -j ACCEPT
-        iptables -A INPUT -s 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 -j ACCEPT
-        iptables -P INPUT DROP
-        iptables -P FORWARD DROP
-        iptables -P OUTPUT ACCEPT
-        iptables-save > /etc/iptables.rules 2>/dev/null
-    fi
-    
-    echo -e "${GREEN}端口策略已更新！${NC}"
-    echo -e "${YELLOW}当前开放端口："
-    ss -tulnp | grep -E '22|80|443|53|123|873|3000|4000'
-    wait_key
-}
-
-# 7. 开放指定端口
-open_specific_port() {
-    echo -e "\n${YELLOW}=== 开放指定端口 ===${NC}"
-    if ! safe_input "输入端口号" "port"; then
-        echo -e "${YELLOW}已取消操作${NC}"
-        wait_key
-        return
-    fi
-    
-    if ! safe_input "协议类型(tcp/udp，默认tcp)" "protocol"; then
-        protocol="tcp"
-    fi
-    protocol=${protocol:-tcp}
-    
-    [[ ! $port =~ ^[0-9]+$ ]] && echo -e "${RED}无效端口号！${NC}" && wait_key && return
-    [[ $port -lt 1 || $port -gt 65535 ]] && echo -e "${RED}端口范围1-65535！${NC}" && wait_key && return
-    
-    if command -v ufw >/dev/null; then
-        ufw allow $port/$protocol
-    elif command -v firewall-cmd >/dev/null; then
-        firewall-cmd --zone=public --add-port=$port/$protocol --permanent
-        firewall-cmd --reload
-    else
-        iptables -A INPUT -p $protocol --dport $port -j ACCEPT
-    fi
-    echo -e "${GREEN}端口 $port/$protocol 已开放！${NC}"
-    wait_key
-}
-
-# 8. 关闭指定端口
-close_specific_port() {
-    echo -e "\n${YELLOW}=== 关闭指定端口 ===${NC}"
-    if ! safe_input "输入端口号" "port"; then
-        echo -e "${YELLOW}已取消操作${NC}"
-        wait_key
-        return
-    fi
-    
-    if ! safe_input "协议类型(tcp/udp，默认tcp)" "protocol"; then
-        protocol="tcp"
-    fi
-    protocol=${protocol:-tcp}
-    
-    [[ ! $port =~ ^[0-9]+$ ]] && echo -e "${RED}无效端口号！${NC}" && wait_key && return
-    
-    if command -v ufw >/dev/null; then
-        ufw delete allow $port/$protocol
-    elif command -v firewall-cmd >/dev/null; then
-        firewall-cmd --zone=public --remove-port=$port/$protocol --permanent
-        firewall-cmd --reload
-    else
-        iptables -D INPUT -p $protocol --dport $port -j ACCEPT
-    fi
-    echo -e "${GREEN}端口 $port/$protocol 已关闭！${NC}"
-    wait_key
-}
-
-#  检测防火墙类型
-detect_firewall() {
-    if command -v ufw >/dev/null; then
-        echo "ufw"
-    elif command -v firewall-cmd >/dev/null; then
-        echo "firewalld"
-    elif command -v iptables >/dev/null; then
-        echo "iptables"
-    else
-        echo "none"
-    fi
-}
-
-# 9. 防火墙状态查看
-show_firewall_status() {
-    echo -e "\n${YELLOW}=== 防火墙状态 ===${NC}"
-    case $(detect_firewall) in
-        ufw)
-            ufw status verbose
-            ;;
-        firewalld)
-            firewall-cmd --state
-            firewall-cmd --list-all
-            ;;
-        iptables)
-            iptables -L -n -v
-            ;;
-        none)
-            echo -e "${RED}未检测到常用防火墙！${NC}"
-            ;;
-    esac
-    wait_key
-}
-
-# 10. 关闭防火墙
-stop_firewall() {
-    echo -e "\n${RED}=== 关闭防火墙 ===${NC}"
-    case $(detect_firewall) in
-        ufw)
-            ufw disable
-            ;;
-        firewalld)
-            systemctl stop firewalld
-            ;;
-        iptables)
-            iptables -F
-            iptables -X
-            iptables -Z
-            ;;
-        none)
-            echo -e "${YELLOW}无活跃防火墙可关闭${NC}"
-            wait_key
-            return
-            ;;
-    esac
-    echo -e "${GREEN}防火墙已关闭！${NC}"
-    wait_key
-}
-
-# 11. 开启防火墙
-start_firewall() {
-    echo -e "\n${GREEN}=== 开启防火墙（默认开放 22 端口） ===${NC}"
-    
-    local firewall_type=$(detect_firewall)
-    
-    case $firewall_type in
-        ufw)
-            echo -e "${YELLOW}检测到使用 UFW 防火墙${NC}"
-            if ! ufw allow 22/tcp; then
-                echo -e "${RED}错误：无法添加 22 端口规则！${NC}" >&2
-                wait_key
-                return 1
-            fi
-            if ufw enable; then
-                echo -e "${GREEN}UFW 已启用，22 端口已开放！${NC}"
-            else
-                echo -e "${RED}错误：UFW 启用失败！${NC}" >&2
-                return 1
-            fi
-            ;;
-        firewalld)
-            echo -e "${YELLOW}检测到使用 Firewalld 防火墙${NC}"
-            if ! firewall-cmd --permanent --add-service=ssh >/dev/null; then
-                echo -e "${RED}错误：无法添加 SSH 服务规则！${NC}" >&2
-                return 1
-            fi
-            if firewall-cmd --reload >/dev/null && systemctl start firewalld; then
-                echo -e "${GREEN}Firewalld 已启用，SSH 服务已开放！${NC}"
-            else
-                echo -e "${RED}错误：Firewalld 启动失败！${NC}" >&2
-                return 1
-            fi
-            ;;
-        iptables)
-            echo -e "${YELLOW}检测到使用 iptables${NC}"
-            echo -e "${YELLOW}正在添加 22 端口规则...${NC}"
-            iptables -A INPUT -p tcp --dport 22 -j ACCEPT
-            if service iptables save &>/dev/null; then
-                echo -e "${GREEN}iptables 规则已保存！${NC}"
-            else
-                echo -e "${RED}警告：无法自动保存 iptables 规则，请手动保存！${NC}" >&2
-            fi
-            if service iptables restart &>/dev/null; then
-                echo -e "${GREEN}iptables 已重启，22 端口已开放！${NC}"
-            else
-                echo -e "${RED}错误：iptables 重启失败！${NC}" >&2
-                return 1
-            fi
-            ;;
-        none)
-            echo -e "${RED}未检测到可管理防火墙！${NC}"
-            wait_key
-            return 1
-            ;;
-    esac
-
-    echo -e "\n${YELLOW}提示：如需开放其他端口（如 80/443），请通过菜单添加！${NC}"
-    wait_key
-}
-
-# 12. 禁止防火墙开机自启
-disable_firewall_autostart() {
-    echo -e "\n${YELLOW}=== 禁用防火墙开机自启 ===${NC}"
-    case $(detect_firewall) in
-        ufw)
-            ufw disable
-            ;;
-        firewalld)
-            systemctl disable firewalld
-            ;;
-        iptables)
-            echo -e "${YELLOW}iptables需自行处理开机脚本${NC}"
-            ;;
-        none)
-            echo -e "${RED}未检测到可管理防火墙！${NC}"
-            wait_key
-            return
-            ;;
-    esac
-    echo -e "${GREEN}已禁止防火墙开机自启！${NC}"
-    wait_key
-}
-
-# 13. 恢复防火墙开机自启
-enable_firewall_autostart() {
-    echo -e "\n${GREEN}=== 启用防火墙开机自启 ===${NC}"
-    case $(detect_firewall) in
-        ufw)
-            ufw enable
-            ;;
-        firewalld)
-            systemctl enable --now firewalld
-            ;;
-        iptables)
-            echo -e "${YELLOW}iptables需自行配置开机启动${NC}"
-            ;;
-        none)
-            echo -e "${RED}未检测到可管理防火墙！${NC}"
-            wait_key
-            return
-            ;;
-    esac
-    echo -e "${GREEN}已恢复防火墙开机自启！${NC}"
-    wait_key
-}
-
-# 14. 创建目录
+# 9. 创建目录
 create_directory() {
     read -p "输入要创建的目录路径及目录名: " dirpath
     if [ -z "$dirpath" ]; then
@@ -668,7 +433,7 @@ create_directory() {
     wait_key
 }
 
-# 15. 创建文件
+# 10. 创建文件
 create_file() {
     read -p "输入要创建的文件路径及文件名: " filepath
     if [ -z "$filepath" ]; then
@@ -689,7 +454,7 @@ create_file() {
     wait_key
 }
 
-# 16. 删除目录/文件
+# 11. 删除目录/文件
 delete_target() {
     read -p "输入要删除的目录或文件的路径: " target
     if [ -z "$target" ]; then
@@ -714,7 +479,7 @@ delete_target() {
     wait_key
 }
 
-# 17. 编辑文件
+# 12. 编辑文件
 edit_file() {
     read -p "输入要编辑的文件路径:（编辑模式：Vim：按 ESC → 输入 :wq → 回车  Nano：按 Ctrl+O 保存 → Ctrl+X 退出 ） " filepath
     if [ -z "$filepath" ]; then
@@ -744,7 +509,7 @@ edit_file() {
     wait_key
 }
 
-# 18. 查找文件/目录
+# 13. 查找文件/目录
 search_files() {
     read -p "输入查找路径（默认当前目录）: " searchpath
     read -p "输入查找名称（支持通配符）: " pattern
