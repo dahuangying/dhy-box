@@ -170,30 +170,28 @@ show_firewall_status() {
     wait_key
 }
 
-# 4. 关闭防火墙（同步关闭自启，保留全部规则）
-stop_firewall() {
-    echo -e "\n${RED}=== 关闭防火墙（保留所有规则） ===${NC}"
-    case $(detect_firewall) in
-        ufw)
-            ufw disable
-            ;;
-        firewalld)
-            systemctl stop firewalld
-            systemctl disable firewalld
-            ;;
-        iptables)
-            iptables -P INPUT ACCEPT
-            iptables -P FORWARD ACCEPT
-            iptables -P OUTPUT ACCEPT
-            echo -e "${YELLOW}iptables 已临时放行所有，规则保留${NC}"
-            ;;
-        *)
-            echo -e "${YELLOW}未检测到防火墙${NC}"
-            wait_key
-            return
-            ;;
-    esac
-    echo -e "${GREEN}防火墙已关闭 + 开机自启已关闭 + 规则全部保留${NC}"
+# 4. 关闭防火墙，清空内存运行规则
+close_firewall() {
+    echo -e "\n${RED}=== 关闭防火墙，清空内存运行规则 ===${NC}"
+    # 关闭 ufw 并禁用开机自启
+    if command -v ufw &>/dev/null; then
+        ufw disable >/dev/null 2>&1
+        systemctl disable ufw >/dev/null 2>&1 
+    fi
+
+    # 关闭 firewalld 并禁用开机自启
+    if command -v firewalld &>/dev/null; then
+        systemctl stop firewalld >/dev/null 2>&1
+        systemctl disable firewalld >/dev/null 2>&1
+    fi
+
+    # 仅清空内存运行规则，iptables规则保留
+    iptables -F
+    iptables -X
+    iptables -Z
+	echo -e "${YELLOW}已清空内存运行规则 ${NC}"
+
+    echo -e "${GREEN}防火墙已关闭 + 开机自启已关闭 + iptables规则已保留${NC}"
     wait_key
 }
 
@@ -205,15 +203,19 @@ start_firewall() {
         ufw)
             ufw enable
             ufw allow 22/tcp
+            ufw allow icmp
             ;;
         firewalld)
             systemctl enable --now firewalld
             firewall-cmd --permanent --add-service=ssh
+            firewall-cmd --permanent --add-protocol=icmp
             firewall-cmd --reload
             ;;
         iptables)
+            iptables -A INPUT -i lo -j ACCEPT 2>/dev/null
             iptables -A INPUT -p tcp --dport 22 -j ACCEPT 2>/dev/null
-            echo -e "${YELLOW}iptables 启动并确保22端口开放${NC}"
+            iptables -A INPUT -p icmp -j ACCEPT 2>/dev/null
+            echo -e "${YELLOW}iptables 启动并放行本地、22端口、ping${NC}"
             ;;
         *)
             echo -e "${RED}未检测到防火墙${NC}"
@@ -551,4 +553,3 @@ recommend_permissions() {
 }
 
 main
-
