@@ -171,7 +171,7 @@ show_firewall_status() {
 }
 
 # 4. 关闭防火墙，清空内存运行规则
-close_firewall() {
+ stop_firewall() {
     echo -e "\n${RED}=== 关闭防火墙，清空内存运行规则 ===${NC}"
     # 关闭 ufw 并禁用开机自启
     if command -v ufw &>/dev/null; then
